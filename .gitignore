@@ -1,3 +1,9 @@
+# Images files
+*.png
+*.jpeg
+*.jpg
+*.tiff
+
 # Prerequisites
 *.d
 
