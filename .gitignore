@@ -1,8 +1,13 @@
-# Images files
+# Image files
 *.png
 *.jpeg
 *.jpg
 *.tiff
+
+# Video files
+*.avi
+*.mp4
+*.mkv
 
 # Prerequisites
 *.d
