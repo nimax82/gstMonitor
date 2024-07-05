@@ -6,6 +6,9 @@
 #include <thread>
 
 #include <chrono>
+#include <ctime>
+#include <iomanip>
+#include <sstream>
 
 #include <gst/gst.h>
 #include <gst/app/gstappsink.h>
@@ -35,6 +38,26 @@ struct GoblinData {
     GstElement *pipeline = nullptr;
     GstElement *sinkVideo = nullptr;
 };
+
+
+//======================================================================================================================
+/// convert time to string
+std::string timePointToString(const std::chrono::time_point<std::chrono::high_resolution_clock>& tp) {
+    // Convert time_point to system time
+    auto systemTime = std::chrono::system_clock::to_time_t(
+        std::chrono::time_point_cast<std::chrono::system_clock::duration>(
+            tp - std::chrono::high_resolution_clock::now() + std::chrono::system_clock::now()
+        )
+    );
+
+    // Convert system time to tm structure
+    std::tm* tm = std::localtime(&systemTime);
+
+    // Create a string stream to format the time
+    std::ostringstream oss;
+    oss << std::put_time(tm, "%Y-%m-%d %H:%M:%S");
+    return oss.str();
+}
 
 //======================================================================================================================
 /// Process a single bus message, log messages, exit on error, return false on eof
@@ -199,7 +222,8 @@ void codeThreadProcessV(GoblinData &data) {
                 noMotionCounter = 0;
                 if (!isRecording) {
                     // Start recording
-                    std::string filename = "motion_output.avi";
+                    std::string timeString = timePointToString(currentTime);
+                    std::string filename = "motion_output_" + timeString + ".avi";
                     //5 -> fps
                     videoWriter.open(filename, cv::VideoWriter::fourcc('M', 'J', 'P', 'G'), 5, cv::Size(imW, imH));
                     if (!videoWriter.isOpened()) {
