@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Video Player</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        h1 {
+            margin-bottom: 20px;
+        }
+        .video-list {
+            list-style-type: none;
+            padding: 0;
+        }
+        .video-list li {
+            margin-bottom: 10px;
+        }
+        video {
+            width: 100%;
+            max-width: 600px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Available Videos</h1>
+    <ul class="video-list">
+        <!-- Video files will be listed here dynamically -->
+    </ul>
+    <hr>
+    <div id="video-player">
+        <h2>Selected Video</h2>
+        <video controls id="video-player-src">
+            <!-- Video source will be set dynamically -->
+        </video>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const videoList = document.querySelector('.video-list');
+            const videoPlayer = document.getElementById('video-player-src');
+
+            // Function to add a video file to the list
+            function addVideoToList(filename) {
+                const listItem = document.createElement('li');
+                const link = document.createElement('a');
+                link.textContent = filename;
+                link.href = '#';
+                link.onclick = function () {
+                    videoPlayer.src = '/videos/' + filename;
+                    return false;
+                };
+                listItem.appendChild(link);
+                videoList.appendChild(listItem);
+            }
+
+            // Replace 'your_api_endpoint' with your actual endpoint to list videos
+            fetch('/api/list_videos') // Endpoint to list videos
+                .then(response => response.json())
+                .then(data => {
+                    data.videos.forEach(video => {
+                        addVideoToList(video);
+                    });
+                })
+                .catch(error => console.error('Error fetching videos:', error));
+        });
+    </script>
+</body>
+</html>
