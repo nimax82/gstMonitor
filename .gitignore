@@ -8,6 +8,7 @@
 *.avi
 *.mp4
 *.mkv
+hls
 
 # Prerequisites
 *.d
@@ -41,3 +42,7 @@
 *.exe
 *.out
 *.app
+
+# Python
+__pycache__
+.flaskvenv

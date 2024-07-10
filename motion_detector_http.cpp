@@ -5,6 +5,8 @@
 #include <string>
 #include <thread>
 
+#include <atomic>
+
 #include <chrono>
 #include <ctime>
 #include <iomanip>
@@ -37,6 +39,8 @@ inline void checkErr(GError *err) {
 struct GoblinData {
     GstElement *pipeline = nullptr;
     GstElement *sinkVideo = nullptr;
+    GstElement *httpPipeline = nullptr;
+    std::atomic<bool> enableHttpStream{false};
 };
 
 
@@ -149,6 +153,9 @@ void codeThreadProcessV(GoblinData &data) {
     int imH = 0;/*= static_cast<int>(capture.get(cv::CAP_PROP_FRAME_HEIGHT));*/
     int fps = 30; // or capture.get(cv::CAP_PROP_FPS);
 
+
+    string videoPath = "/var/www/html/videos/";
+
     for (;;) {
         // Exit on EOS
         if (gst_app_sink_is_eos(GST_APP_SINK(data.sinkVideo))) {
@@ -223,7 +230,7 @@ void codeThreadProcessV(GoblinData &data) {
                 if (!isRecording) {
                     // Start recording
                     std::string timeString = timePointToString(currentTime);
-                    std::string filename = "motion_output_" + timeString + ".avi";
+                    std::string filename = videoPath + "motion_output_" + timeString + ".avi";
                     //5 -> fps
                     videoWriter.open(filename, cv::VideoWriter::fourcc('M', 'J', 'P', 'G'), 3, cv::Size(imW, imH));
                     if (!videoWriter.isOpened()) {
@@ -262,6 +269,48 @@ void codeThreadProcessV(GoblinData &data) {
 }
 
 //======================================================================================================================
+/// HTTP server process thread
+void codeThreadProcessHttp(GoblinData &data) {
+    while (true) {
+        if (data.enableHttpStream) {
+            gst_element_set_state(data.httpPipeline, GST_STATE_PLAYING);
+            GstBus *bus = gst_element_get_bus(data.httpPipeline);
+            GstMessage *msg;
+
+            do {
+                msg = gst_bus_timed_pop_filtered(bus, GST_CLOCK_TIME_NONE, static_cast<GstMessageType>(GST_MESSAGE_ERROR | GST_MESSAGE_EOS));
+                if (msg != nullptr) {
+                    GError *err;
+                    gchar *dbg_info;
+
+                    switch (GST_MESSAGE_TYPE(msg)) {
+                        case GST_MESSAGE_ERROR:
+                            gst_message_parse_error(msg, &err, &dbg_info);
+                            g_printerr("Error received from element %s: %s\n", GST_OBJECT_NAME(msg->src), err->message);
+                            g_printerr("Debugging information: %s\n", dbg_info ? dbg_info : "none");
+                            g_clear_error(&err);
+                            g_free(dbg_info);
+                            break;
+                        case GST_MESSAGE_EOS:
+                            g_print("End-Of-Stream reached.\n");
+                            break;
+                        default:
+                            // We should not reach here because we only asked for ERRORs and EOS
+                            g_printerr("Unexpected message received.\n");
+                            break;
+                    }
+                    gst_message_unref(msg);
+                }
+            } while (data.enableHttpStream && !msg);
+
+            gst_object_unref(bus);
+            gst_element_set_state(data.httpPipeline, GST_STATE_NULL);
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+}
+
+//======================================================================================================================
 int main(int argc, char **argv) {
     using namespace std;
     cout << "VIDEO1 : Send udp stream to appsink, display with cv::imshow()" << endl;
@@ -271,6 +320,9 @@ int main(int argc, char **argv) {
 
     // Our global data
     GoblinData data;
+
+    // Flag to enable HTTP streaming
+    data.enableHttpStream = false;
 
     // Set up the pipeline
     // Caps in appsink are important
@@ -287,6 +339,23 @@ int main(int argc, char **argv) {
     data.sinkVideo = gst_bin_get_by_name(GST_BIN (data.pipeline), "sink");
     MY_ASSERT(data.sinkVideo);
 
+    // Set up the HTTP streaming pipeline
+    /*string httpPipeStr = "udpsrc port=5000 ! application/x-rtp,encoding-name=H264,payload=96 ! "
+        "rtph264depay ! h264parse ! avdec_h264 ! videoconvert ! x264enc tune=zerolatency ! mpegtsmux ! "
+        "hlssink max-files=5 target-duration=1 location=/var/www/html/hls/segment%05d.ts playlist-location=/var/www/html/hls/playlist.m3u8";*/
+
+    string httpPipeStr = "udpsrc port=5000 ! application/x-rtp,encoding-name=H264,payload=96 ! "
+        "rtph264depay ! h264parse ! avdec_h264 ! x264enc tune=zerolatency ! "
+        "queue ! mpegtsmux ! hlssink max-files=5 target-duration=1 location=/var/www/html/hls/segment%05d.ts playlist-location=/var/www/html/hls/playlist.m3u8";
+
+
+    //"hlssink max-files=5 target-duration=1 location=/var/www/html/hls/segment%05d.ts playlist-location=/var/www/html/hls/playlist.m3u8"
+    //"hlssink max-files=5 target-duration=1 location=/home/promax/Dev/playground/gstreamer_pl/hls/segment%05d.ts playlist-location=/home/promax/Dev/playground/gstreamer_pl/hls/playlist.m3u8"
+
+    data.httpPipeline = gst_parse_launch(httpPipeStr.c_str(), &err);
+    checkErr(err);
+    MY_ASSERT(data.httpPipeline);
+
     // Play the pipeline
     MY_ASSERT(gst_element_set_state(data.pipeline, GST_STATE_PLAYING));
 
@@ -300,13 +369,26 @@ int main(int argc, char **argv) {
         codeThreadProcessV(data);
     });
 
+    // Start the http stream process thread
+    thread threadhttp([&data]() -> void {
+        codeThreadProcessHttp(data);
+    });
+
+    /*    // Start the bus and processing threads
+    thread busThread(codeThreadBus, data.pipeline, ref(data), "MAIN BUS");
+    thread processThread(codeThreadProcessV, ref(data));
+    thread httpProcessThread(codeThreadProcessHttp, ref(data));*/
+
     // Wait for threads
     threadBus.join();
     threadProcess.join();
+    threadhttp.join();
 
     // Destroy the pipeline
     gst_element_set_state(data.pipeline, GST_STATE_NULL);
     gst_object_unref(data.pipeline);
+    gst_element_set_state(data.httpPipeline, GST_STATE_NULL);
+    gst_object_unref(data.httpPipeline);
 
     return 0;
 }
