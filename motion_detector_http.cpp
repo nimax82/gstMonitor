@@ -12,6 +12,9 @@
 #include <iomanip>
 #include <sstream>
 
+//rename
+#include <cstdio>
+
 #include <gst/gst.h>
 #include <gst/app/gstappsink.h>
 #include <opencv2/opencv.hpp>
@@ -154,7 +157,8 @@ void codeThreadProcessV(GoblinData &data) {
     int fps = 30; // or capture.get(cv::CAP_PROP_FPS);
 
 
-    string videoPath = "/home/promax/Dev/playground/gstreamer_pl/resources/video/static/";
+    std::string videoPath = "/home/promax/Dev/playground/gstreamer_pl/resources/video/static/";
+    std::string filename = "";
 
     for (;;) {
         // Exit on EOS
@@ -230,11 +234,11 @@ void codeThreadProcessV(GoblinData &data) {
                 if (!isRecording) {
                     // Start recording
                     std::string timeString = timePointToString(currentTime);
-                    std::string filename = videoPath + "motion_output_" + timeString + ".mp4";
+                    filename = ".motion_output_" + timeString + ".mp4";
                     //3 -> fps
                     //AVI videoWriter.open(filename, cv::VideoWriter::fourcc('M', 'J', 'P', 'G'), 3, cv::Size(imW, imH));
                     //videoWriter.open(filename, cv::VideoWriter::fourcc('H', '2', '6', '4'), 3, cv::Size(imW, imH));
-                    videoWriter.open(filename, cv::VideoWriter::fourcc('a', 'v', 'c', '1'), 3, cv::Size(imW, imH));
+                    videoWriter.open(videoPath + filename, cv::VideoWriter::fourcc('a', 'v', 'c', '1'), 3, cv::Size(imW, imH));
                     if (!videoWriter.isOpened()) {
                         std::cerr << "Could not open the output video file for write\n";
                         continue;
@@ -250,6 +254,18 @@ void codeThreadProcessV(GoblinData &data) {
                     // Stop recording
                     videoWriter.release();
                     isRecording = false;
+
+                    //rename the file
+                    std::string old_name = videoPath + filename;
+                    std::string new_name = videoPath + filename.substr(1);  // Remove the first character (".")
+
+                    // Rename the file
+                    if (std::rename(old_name.c_str(), new_name.c_str()) != 0) {
+                        std::perror("Error renaming file");
+                    }
+                    std::cout << "File renamed successfully\n";
+
+                    filename = "";
                     cout << "END VIDEO" << endl;
                 }
             }
