@@ -154,7 +154,7 @@ void codeThreadProcessV(GoblinData &data) {
     int fps = 30; // or capture.get(cv::CAP_PROP_FPS);
 
 
-    string videoPath = "/var/www/html/videos/";
+    string videoPath = "/home/promax/Dev/playground/gstreamer_pl/resources/video/static/";
 
     for (;;) {
         // Exit on EOS
@@ -230,9 +230,11 @@ void codeThreadProcessV(GoblinData &data) {
                 if (!isRecording) {
                     // Start recording
                     std::string timeString = timePointToString(currentTime);
-                    std::string filename = videoPath + "motion_output_" + timeString + ".avi";
-                    //5 -> fps
-                    videoWriter.open(filename, cv::VideoWriter::fourcc('M', 'J', 'P', 'G'), 3, cv::Size(imW, imH));
+                    std::string filename = videoPath + "motion_output_" + timeString + ".mp4";
+                    //3 -> fps
+                    //AVI videoWriter.open(filename, cv::VideoWriter::fourcc('M', 'J', 'P', 'G'), 3, cv::Size(imW, imH));
+                    //videoWriter.open(filename, cv::VideoWriter::fourcc('H', '2', '6', '4'), 3, cv::Size(imW, imH));
+                    videoWriter.open(filename, cv::VideoWriter::fourcc('a', 'v', 'c', '1'), 3, cv::Size(imW, imH));
                     if (!videoWriter.isOpened()) {
                         std::cerr << "Could not open the output video file for write\n";
                         continue;

@@ -1,0 +1,38 @@
+<!doctype html>
+<html>
+<head>
+    <title>Video Files</title>
+</head>
+<body>
+    <h1>Video Files</h1>
+    <ul>
+        {% for file in files %}
+            <li><a href="#" data-file="{{ file }}">{{ file }}</a></li>
+        {% endfor %}
+    </ul>
+    <video id="videoPlayer" controls>
+        <source id="videoSource" type="video/mp4">
+        Your browser does not support the video tag.
+    </video>
+
+    <script>
+        const links = document.querySelectorAll('a[data-file]');
+        const videoPlayer = document.getElementById('videoPlayer');
+        const videoSource = document.getElementById('videoSource');
+
+        links.forEach(link => {
+            link.addEventListener('click', event => {
+                event.preventDefault();
+                const fileName = link.getAttribute('data-file');
+                const extension = fileName.split('.').pop();
+                const mimeType = extension === 'webm' ? 'video/webm' : 'video/mp4';
+                const url = `/video/${fileName}`;
+                videoSource.src = url;
+                videoSource.type = mimeType;
+                videoPlayer.load();
+                videoPlayer.play();
+            });
+        });
+    </script>
+</body>
+</html>
