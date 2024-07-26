@@ -63,7 +63,7 @@ int main (int argc, char *argv[]) {
   data.decode_b1 = gst_element_factory_make("avdec_h264", "decode_b1"); 
   data.convert_b1 = gst_element_factory_make("videoconvert", "convert_b1");
   data.filter_b1 = gst_element_factory_make("capsfilter", "filter_b1");
-  data.sink_b1 =  gst_element_factory_make("appsink", "sink_b1");
+  data.sink_b1 =  gst_element_factory_make("autovideosink", "sink_b1");
   if (!data.queue_b1 || !data.decode_b1 || !data.convert_b1 || !data.filter_b1 || !data.sink_b1) {
     g_printerr ("Enable to create the first pipeline branch.\n");
     return -1;
@@ -118,7 +118,45 @@ int main (int argc, char *argv[]) {
     return -1;
   }
 
+  /* Manually link the Tee, which has "Request" pads */
+  GstPad *split_b1_pad, *split_b2_pad;
+  GstPad *queue_b1_pad, *queue_b2_pad;
+
+  split_b1_pad = gst_element_request_pad_simple (data.split, "src_%u"); // from doc “sink” (for tee sink Pads) and “src_%u” (for the Request Pads)
+  g_print("Obtained request pad %s for b1 branch (opencv processing).\n", gst_pad_get_name(split_b1_pad));
+  queue_b1_pad = gst_element_get_static_pad (data.queue_b1, "sink"); // get sink pad of the data.queue_b1 element
+
+  split_b2_pad = gst_element_request_pad_simple (data.split, "src_%u");
+  g_print ("Obtained request pad %s for b2 branch (hls).\n", gst_pad_get_name (split_b2_pad));
+  queue_b2_pad = gst_element_get_static_pad (data.queue1_b2, "sink");
+
+  if (gst_pad_link (split_b1_pad, queue_b1_pad) != GST_PAD_LINK_OK ||
+      gst_pad_link (split_b2_pad, queue_b2_pad) != GST_PAD_LINK_OK) {
+    g_printerr ("Stream spitter (Tee) could not be linked.\n");
+    gst_object_unref (data.pipeline);
+    return -1;
+  }
+  gst_object_unref (queue_b1_pad);
+  gst_object_unref (queue_b2_pad);
+
+  /* Start playing the pipeline */
+  gst_element_set_state (data.pipeline, GST_STATE_PLAYING);
+
+  /* Wait until error or EOS */
+  bus = gst_element_get_bus (data.pipeline);
+  msg = gst_bus_timed_pop_filtered (bus, GST_CLOCK_TIME_NONE,
+      (GstMessageType)(GST_MESSAGE_ERROR | GST_MESSAGE_EOS));
+
+
+  /* Release the request pads from the Tee, and unref them */
+  gst_element_release_request_pad (data.split, split_b1_pad);
+  gst_element_release_request_pad (data.split, split_b2_pad);
+  gst_object_unref (split_b1_pad);
+  gst_object_unref (split_b2_pad);
+
   /* Free resources */
+  if (msg != NULL)
+    gst_message_unref (msg);
   gst_object_unref (bus);
   gst_element_set_state (data.pipeline, GST_STATE_NULL);
   gst_object_unref (data.pipeline);
