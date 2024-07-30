@@ -2,6 +2,7 @@
 <html>
 <head>
     <title>Video Files</title>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 </head>
 <body>
     <h1>Video Files</h1>
@@ -10,6 +11,7 @@
             <li><a href="#" data-file="{{ file }}">{{ file }}</a></li>
         {% endfor %}
     </ul>
+    <button id="showStreamBtn">Show Stream</button>
     <video id="videoPlayer" controls>
         <source id="videoSource" type="video/mp4">
         Your browser does not support the video tag.
@@ -19,6 +21,7 @@
         const links = document.querySelectorAll('a[data-file]');
         const videoPlayer = document.getElementById('videoPlayer');
         const videoSource = document.getElementById('videoSource');
+        const showStreamBtn = document.getElementById('showStreamBtn');
 
         links.forEach(link => {
             link.addEventListener('click', event => {
@@ -32,6 +35,23 @@
                 videoPlayer.load();
                 videoPlayer.play();
             });
+        });
+
+        showStreamBtn.addEventListener('click', () => {
+            const hlsUrl = '/hls/playlist.m3u8';
+            if (Hls.isSupported()) {
+                const hls = new Hls();
+                hls.loadSource(hlsUrl);
+                hls.attachMedia(videoPlayer);
+                hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                    videoPlayer.play();
+                });
+            } else if (videoPlayer.canPlayType('application/vnd.apple.mpegurl')) {
+                videoPlayer.src = hlsUrl;
+                videoPlayer.addEventListener('loadedmetadata', () => {
+                    videoPlayer.play();
+                });
+            }
         });
     </script>
 </body>

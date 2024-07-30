@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source .flaskvenv/bin/activate
+source ../../.flaskvenv/bin/activate
 
 export FLASK_APP=backend.py
 
