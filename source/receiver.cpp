@@ -24,3 +24,5 @@ int main(int argc, char *argv[]) {
 
     return 0;
 }
+
+//gst-launch-1.0 udpsrc port=5057 ! application/x-rtp,encoding-name=H265,payload=96 ! rtph265depay ! h265parse ! avdec_h265 ! videoconvert ! autovideosink

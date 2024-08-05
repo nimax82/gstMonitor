@@ -26,6 +26,7 @@ typedef struct _PipelineData
   GstElement *encode_b2; //x264enc tune=zerolatency 
   GstElement *queue2_b2; //queue
   GstElement *muxer_b2; //mpegtsmux
+  GstElement *parser_b2; //h264parse
 
   GstElement *sink_b1; //appsink name=sink
   GstElement *sink_b2; //hlssink max-files=5 target-duration=1 location=/var/www/html/hls/segment%05d.ts playlist-location=/var/www/html/hls/playlist.m3u8
@@ -217,9 +218,10 @@ int main (int argc, char *argv[]) {
   data.decode_b2 = gst_element_factory_make("avdec_h264", "decode_b2");
   data.encode_b2 = gst_element_factory_make("x264enc", "encode_b2");
   data.queue2_b2 = gst_element_factory_make("queue", "queue2_b2");
-  data.muxer_b2 = gst_element_factory_make("mpegtsmux", "muxer_b2");
-  data.sink_b2 =  gst_element_factory_make("hlssink", "sink_b2");
-  if (!data.queue1_b2 || !data.decode_b2 || !data.encode_b2 || !data.queue2_b2 || !data.muxer_b2 || !data.sink_b2) {
+  //data.muxer_b2 = gst_element_factory_make("mpegtsmux", "muxer_b2");
+  //data.muxer_b2 = gst_element_factory_make("h264parse", "parser_b2");
+  data.sink_b2 =  gst_element_factory_make("hlssink2", "sink_b2");
+  if (!data.queue1_b2 || !data.decode_b2 || !data.encode_b2 || !data.queue2_b2 || !data.sink_b2) {
     g_printerr ("Enable to create the second pipeline branch.\n");
     return -1;
   }
@@ -242,9 +244,9 @@ int main (int argc, char *argv[]) {
   g_object_set(data.encode_b2, "tune", 4, NULL); // 4 = Zero latency
 
   // sink hls
-  g_object_set(data.sink_b2, "max-files", 5, "target-duration", 1,
-                "location", "/var/www/html/hls/segment%05d.ts",
-                "playlist-location", "/var/www/html/hls/playlist.m3u8", NULL);
+  g_object_set(data.sink_b2, "max-files", 10, "target-duration", 5,
+                "location", "../../resources/video/hls/segment%05d.ts",
+                "playlist-location", "../../resources/video/hls/playlist.m3u8", NULL);
 
   /* Create the pipeline */
   data.pipeline = gst_pipeline_new("main_pipeline");
@@ -256,10 +258,10 @@ int main (int argc, char *argv[]) {
   /* Link all elements that can be automatically linked because they have "Always" pads */
   gst_bin_add_many (GST_BIN (data.pipeline), data.source, data.rtpdepay, data.parse, data.split,
                                             data.queue_b1, data.decode_b1, data.convert_b1, data.filter_b1, data.sink_b1,
-                                            data.queue1_b2, data.decode_b2, data.encode_b2, data.queue2_b2, data.muxer_b2, data.sink_b2, NULL); 
+                                            data.queue1_b2, data.decode_b2, data.encode_b2, data.queue2_b2, data.sink_b2, NULL); 
   if ( (gst_element_link_many (data.source, data.rtpdepay, data.parse, data.split, NULL) != TRUE) || 
        (gst_element_link_many (data.queue_b1, data.decode_b1, data.convert_b1, data.filter_b1, data.sink_b1, NULL) != TRUE) || 
-       (gst_element_link_many (data.queue1_b2, data.decode_b2, data.encode_b2, data.queue2_b2, data.muxer_b2, data.sink_b2, NULL) != TRUE) ) {
+       (gst_element_link_many (data.queue1_b2, data.decode_b2, data.encode_b2, data.queue2_b2, data.sink_b2, NULL) != TRUE) ) {
     g_printerr ("Elements could not be linked.\n");
     gst_object_unref (data.pipeline);
     return -1;

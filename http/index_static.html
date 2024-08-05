@@ -23,6 +23,26 @@
         const videoSource = document.getElementById('videoSource');
         const showStreamBtn = document.getElementById('showStreamBtn');
 
+        let hls;
+
+        function resetVideoPlayer() {
+            // Pause the video player
+            videoPlayer.pause();
+
+            // Remove the current video source
+            videoPlayer.removeAttribute('src');
+            videoSource.removeAttribute('src');
+
+            // Reset the video element
+            videoPlayer.load();
+
+            // If an HLS instance exists, destroy it
+            if (hls) {
+                hls.destroy();
+                hls = null;
+            }
+        }
+
         links.forEach(link => {
             link.addEventListener('click', event => {
                 event.preventDefault();
@@ -30,6 +50,7 @@
                 const extension = fileName.split('.').pop();
                 const mimeType = extension === 'webm' ? 'video/webm' : 'video/mp4';
                 const url = `/video/${fileName}`;
+                resetVideoPlayer();
                 videoSource.src = url;
                 videoSource.type = mimeType;
                 videoPlayer.load();
@@ -39,6 +60,7 @@
 
         showStreamBtn.addEventListener('click', () => {
             const hlsUrl = '/hls/playlist.m3u8';
+            resetVideoPlayer();
             if (Hls.isSupported()) {
                 const hls = new Hls();
                 hls.loadSource(hlsUrl);
