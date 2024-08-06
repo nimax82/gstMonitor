@@ -12,7 +12,7 @@ HLS_DIR =  '../../resources/video/hls'  # Directory where HLS files are stored '
 @app.route('/')
 def index():
     # List all video files in the directory
-    files = [f for f in os.listdir(VIDEO_DIR) if f.endswith('.mp4') and not f.startswith('.')]
+    files = sorted([f for f in os.listdir(VIDEO_DIR) if f.endswith('.mp4') and not f.startswith('.')])
     return render_template('index_static.html', files=files)
 
 @app.route('/video/<filename>')
