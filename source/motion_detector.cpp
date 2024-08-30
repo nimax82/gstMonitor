@@ -171,6 +171,11 @@ void codeThreadProcessV(GoblinData &data) {
         MY_ASSERT(gst_structure_get_int(s, "width", &imW));
         MY_ASSERT(gst_structure_get_int(s, "height", &imH));
         //cout << "Sample: W = " << imW << ", H = " << imH << endl;
+        gchar *caps_str = gst_caps_to_string(caps);
+        g_print("Caps: %s\n", caps_str);
+        g_free(caps_str);
+
+
 
         // Increment frame count
         frameCount++;
@@ -276,8 +281,8 @@ int main(int argc, char **argv) {
     // Caps in appsink are important
     // max-buffers=2 to limit the queue and RAM usage
     // sync=1 for real-time playback, try sync=0 for fun !
-    string pipeStr = "udpsrc port=5000 ! application/x-rtp,encoding-name=H264,payload=96 ! "
-        "rtph264depay ! h264parse ! avdec_h264 ! videoconvert ! video/x-raw,format=RGB,width=640,height=480 ! appsink name=sink";
+    string pipeStr = "udpsrc port=5057 ! application/x-rtp,encoding-name=H264,payload=96 ! "
+        "rtph264depay ! h264parse ! avdec_h264 ! videoconvert ! video/x-raw,format=RGB,width=1280,height=720 ! appsink name=sink";
     
     GError *err = nullptr;
     data.pipeline = gst_parse_launch(pipeStr.c_str(), &err);

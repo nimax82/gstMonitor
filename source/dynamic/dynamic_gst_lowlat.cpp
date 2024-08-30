@@ -5,7 +5,6 @@
 #include <cstdio>
 
 #include <gst/gst.h>
-//#include <gst/app/gstappsink.h>
 #include <opencv2/opencv.hpp>
 
 /* Structure to contain all our information, so we can pass it to callbacks */
@@ -69,7 +68,7 @@ std::string filename = "";
 cv::Mat frame, gray, prevGray, diff;
 cv::VideoWriter videoWriter;
 int noMotionCounter = 0;
-const int noMotionThreshold = 5;//10
+const int noMotionThreshold = 10;
 bool isRecording = false;
 
 // Variables for time management
@@ -85,21 +84,13 @@ static GstFlowReturn imageProcessing(GstElement *sink, PipelineData *data) {
   GstSample *sample;
   /* Retrieve the buffer */
   g_signal_emit_by_name (sink, "pull-sample", &sample);
-  //GstSample *sample = gst_app_sink_pull_sample(GST_APP_SINK(data->sink_b1));
   if (sample) {
     /* Process current frame */
 
     // Get width and height from sample caps (NOT element caps)
-    GstCaps *sampleCaps = gst_sample_get_caps(sample);
-    if (sampleCaps != nullptr) {
-      GstStructure *s = gst_caps_get_structure(sampleCaps, 0);
-      gchar *caps_str = gst_caps_to_string(sampleCaps);
-      //g_print("/////////////////////////\n");
-      //g_print("Caps: %s\n", caps_str);
-      //g_print("/////////////////////////\n");
-
-      g_free(caps_str);
-
+    GstCaps *caps = gst_sample_get_caps(sample);
+    if (caps != nullptr) {
+      GstStructure *s = gst_caps_get_structure(caps, 0);
       //int imW, imH;
       MY_ASSERT(gst_structure_get_int(s, "width", &imW));
       MY_ASSERT(gst_structure_get_int(s, "height", &imH));
@@ -107,12 +98,14 @@ static GstFlowReturn imageProcessing(GstElement *sink, PipelineData *data) {
       auto currentTime = std::chrono::high_resolution_clock::now();
 
       GstBuffer *buffer = gst_sample_get_buffer(sample);
-      GstMapInfo map;
-      MY_ASSERT(gst_buffer_map(buffer, &map, GST_MAP_READ));
-      MY_ASSERT(map.size == imW * imH * 3);
+      GstMapInfo m;
+      MY_ASSERT(gst_buffer_map(buffer, &m, GST_MAP_READ));
+      MY_ASSERT(m.size == imW * imH * 3);
 
       // convert sample to opencv frame
-      cv::Mat frame(imH, imW, CV_8UC3, (void *) map.data);
+      cv::Mat frame(imH, imW, CV_8UC3, (void *) m.data);
+
+      //ERROR unexpected frame (mosaïque) WIP
 
       if (!prevGray.empty()) {
         // Convert to grayscale
@@ -124,9 +117,8 @@ static GstFlowReturn imageProcessing(GstElement *sink, PipelineData *data) {
         // Threshold the difference image to get the motion regions
         cv::threshold(diff, diff, 25, 255, cv::THRESH_BINARY);
 
-        g_print("diff=%d\n", cv::countNonZero(diff));
         // Check if there is any motion
-        bool motionDetected = cv::countNonZero(diff) > 20;
+        bool motionDetected = cv::countNonZero(diff) > 0;
         if (motionDetected) {
             noMotionCounter = 0;
             if (!isRecording) {
@@ -166,7 +158,7 @@ static GstFlowReturn imageProcessing(GstElement *sink, PipelineData *data) {
         }
       }
       cv::cvtColor(frame, prevGray, cv::COLOR_BGR2GRAY);
-      gst_buffer_unmap(buffer, &map);
+      gst_buffer_unmap(buffer, &m);
     } else {
       g_print("ERROR - imageProcessing: unable to retrive sample width and height\n");
     }
@@ -216,7 +208,6 @@ int main (int argc, char *argv[]) {
   data.convert_b1 = gst_element_factory_make("videoconvert", "convert_b1");
   data.filter_b1 = gst_element_factory_make("capsfilter", "filter_b1");
   data.sink_b1 =  gst_element_factory_make("appsink", "sink_b1");
-  //data.sink_b1 =  gst_element_factory_make("autovideosink", "sink_b1");
   if (!data.queue_b1 || !data.decode_b1 || !data.convert_b1 || !data.filter_b1 || !data.sink_b1) {
     g_printerr ("Enable to create the first pipeline branch.\n");
     return -1;
@@ -244,45 +235,6 @@ int main (int argc, char *argv[]) {
                               NULL);
   g_object_set(data.source, "caps", caps, NULL);
   gst_caps_unref(caps);
-//, encoding-name=(string)H264, payload=(int)96
-  // Set the caps for the capsfilter (b1)
-/*  GstCaps *capsB1 = gst_caps_new_simple("video/x-raw",
-                                      "format", G_TYPE_STRING, "RGB",
-                                      "chroma-format", G_TYPE_STRING, "4:4:4",
-                                      "stream-format", G_TYPE_STRING, "avc",
-                                      "alignment", G_TYPE_STRING
-                                      //"width", G_TYPE_INT, 1280,
-                                      //"height", G_TYPE_INT, 720,
-                                      //"media", G_TYPE_STRING, "video",
-                                      //"encoding-name", G_TYPE_STRING, "H264",
-                                      //"interlace-mode", G_TYPE_STRING, "progressive",
-                                      //"pixel-aspect-ratio", GST_TYPE_FRACTION, 1, 1,
-                                      //"framerate", GST_TYPE_FRACTION, 5, 1,
-                                      "colorimetry", G_TYPE_STRING, "2:4:5:1",
-                                      NULL);*/
-  GstCaps *capsB1 = gst_caps_new_simple(
-        "video/x-raw",
-        "format", G_TYPE_STRING, "BGR",
-        //"stream-format", G_TYPE_STRING, "avc",
-        //"alignment", G_TYPE_STRING, "au",
-        //"level", G_TYPE_STRING, "3.1",
-        //"profile", G_TYPE_STRING, "high-4:4:4",
-        //"pixel-aspect-ratio", GST_TYPE_FRACTION, 1, 1,
-        //"width", G_TYPE_INT, 1280,
-        //"height", G_TYPE_INT, 720,
-        //"framerate", GST_TYPE_FRACTION, 5, 1,
-        //"coded-picture-structure", G_TYPE_STRING, "frame",
-        //"chroma-format", G_TYPE_STRING, "4:4:4",
-        //"chroma-site", G_TYPE_STRING, "dv",
-        //"bit-depth-luma", G_TYPE_UINT, 8,
-        //"bit-depth-chroma", G_TYPE_UINT, 8,
-        //"colorimetry", G_TYPE_STRING, "2:4:5:1",
-        //"parsed", G_TYPE_BOOLEAN, TRUE,
-        //"range", G_TYPE_STRING, "full",
-        NULL);
-
-  g_object_set(data.filter_b1, "caps", capsB1, NULL);
-  gst_caps_unref(capsB1);
 
   // appsink (b1)
   g_object_set (data.sink_b1, "emit-signals", TRUE, NULL);
