@@ -6,7 +6,7 @@ This project is a prototype application using GStreamer. Its main goal is to pro
 
 The POC is structured as follows:
 
-Video Stream [acquision](source/sender.cpp): Acquisition is performed using UDP transfer.
+[Video acquision](source/sender.cpp): Acquisition is performed using UDP transfer.
 
 [Processing](source/dynamic/dynamic_gst.cpp): The received video stream is split into multiple pipelines, each dedicated to a specific processing step (e.g., OpenCV-based motion detection with file creation, generating files for HLS streaming).
 
