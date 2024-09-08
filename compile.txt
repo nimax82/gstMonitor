@@ -1,2 +1,3 @@
+# Manual compilation with g++ for now, CMake will be used in the future.
 g++ sender.cpp -o sender.out `pkg-config --cflags --libs gstreamer-1.0`
 g++ receiveAndprocessv2.cpp -o receiver.out `pkg-config --cflags --libs gstreamer-1.0 gstreamer-app-1.0 opencv4`
