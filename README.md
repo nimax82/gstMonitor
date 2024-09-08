@@ -8,12 +8,15 @@ The POC is structured as follows:
 
 Video Stream [acquision](source/sender.cpp): Acquisition is performed using UDP transfer.
 
-Processing: The received video stream is split into multiple pipelines, each dedicated to a specific processing step (e.g., OpenCV-based motion detection with file creation, generating files for HLS streaming).
+[Processing](source/dynamic/dynamic_gst.cpp): The received video stream is split into multiple pipelines, each dedicated to a specific processing step (e.g., OpenCV-based motion detection with file creation, generating files for HLS streaming).
 
-Display: A Flask server provides an on-demand display of the live stream acquired from the sender, along with a list of motion-detected segments.
+[Display](source/flask/backend.py): A Flask server provides an on-demand display of the live stream acquired from the sender, along with a list of motion-detected segments.
 
-(TODO: Add schema here)
-(TODO: Add screenshot)
+*Figure 1: Diagram showing the architecture of the gstMonitor pipeline.*
+![Diagram](doc/gst_diagram.png)
+
+*Figure 2: Screenshot of the Flask server displaying the live stream and motion-detected segments.*
+![Server](doc/flask_server.png)
 
 ## Futher work
 
