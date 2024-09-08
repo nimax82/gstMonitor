@@ -22,7 +22,7 @@ Video Stream [acquision](source/sender.cpp): Acquisition is performed using UDP 
 
 The next step of this project is to add various image processing modules that can be loaded and unloaded dynamically, especially AI-powered processing modules.
 
-Following this, a thorough analysis of the system’s capabilities and limitations will be conducted to guide the development of a more ambitious project with an optimized software architecture.
+Following this, a thorough analysis of the system’s capabilities and limitations will be conducted to guide the development of a more ambitious project with an optimized software architecture, focused on minimizing resource consumption.
 
 ## License
 @Todo
