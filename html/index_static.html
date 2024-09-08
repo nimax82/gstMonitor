@@ -1,0 +1,166 @@
+<!doctype html>
+<html>
+<head>
+    <title>Rabbitos TV</title>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+
+        #container {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        #videoContainer {
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            flex-shrink: 0;
+        }
+
+        video {
+            width: 100%;
+            border-radius: 8px;
+        }
+
+        #bottomSection {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            align-items: center;
+            margin-top: 5vh; /* Add margin-top for consistent spacing */
+            flex-grow: 0;
+        }
+
+        ul {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+            grid-column: 1 / 3;
+            justify-self: center;
+        }
+
+        li {
+            margin: 10px 0;
+        }
+
+        a {
+            text-decoration: none;
+            color: #007BFF;
+            font-weight: bold;
+            transition: color 0.3s ease;
+        }
+
+        a:hover {
+            color: #0056b3;
+        }
+
+        button {
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            grid-column: 3 / 4;
+            justify-self: center;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <h1>Rabbitos TV</h1>
+    <div id="container">
+        <div id="videoContainer">
+            <video id="videoPlayer" controls>
+                <source id="videoSource" type="video/mp4">
+                Your browser does not support the video tag.
+            </video>
+        </div>
+
+        <div id="bottomSection">
+            <ul>
+                {% for file in files %}
+                    <li><a href="#" data-file="{{ file }}">{{ file }}</a></li>
+                {% endfor %}
+            </ul>
+            <button id="showStreamBtn">Show Stream</button>
+        </div>
+    </div>
+
+    <script>
+        const links = document.querySelectorAll('a[data-file]');
+        const videoPlayer = document.getElementById('videoPlayer');
+        const videoSource = document.getElementById('videoSource');
+        const showStreamBtn = document.getElementById('showStreamBtn');
+
+        let hls;
+
+        function resetVideoPlayer() {
+            videoPlayer.pause();
+            videoPlayer.removeAttribute('src');
+            videoSource.removeAttribute('src');
+            videoPlayer.load();
+
+            if (hls) {
+                hls.destroy();
+                hls = null;
+            }
+        }
+
+        links.forEach(link => {
+            link.addEventListener('click', event => {
+                event.preventDefault();
+                const fileName = link.getAttribute('data-file');
+                const extension = fileName.split('.').pop();
+                const mimeType = extension === 'webm' ? 'video/webm' : 'video/mp4';
+                const url = `/video/${fileName}`;
+                resetVideoPlayer();
+                videoSource.src = url;
+                videoSource.type = mimeType;
+                videoPlayer.load();
+                videoPlayer.play();
+            });
+        });
+
+        showStreamBtn.addEventListener('click', () => {
+            const hlsUrl = '/hls/playlist.m3u8';
+            resetVideoPlayer();
+            if (Hls.isSupported()) {
+                hls = new Hls();
+                hls.loadSource(hlsUrl);
+                hls.attachMedia(videoPlayer);
+                hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                    videoPlayer.play();
+                });
+            } else if (videoPlayer.canPlayType('application/vnd.apple.mpegurl')) {
+                videoPlayer.src = hlsUrl;
+                videoPlayer.addEventListener('loadedmetadata', () => {
+                    videoPlayer.play();
+                });
+            }
+        });
+    </script>
+</body>
+</html>
